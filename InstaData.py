@@ -26,9 +26,6 @@ def hashtag_data(hashtag):
 
     """
     # get the json link for the needed hashtag
-    # get the variables from node .e inputed by the user
-    hashtag = sys.argv[1]
-    path = sys.argv[2] 
     url = 'https://www.instagram.com/explore/tags/'+ hashtag + '/?__a=1'
     response = requests.get(url)
     response_text = response.text
@@ -128,13 +125,14 @@ def hashtag_data(hashtag):
     path_to_data = f'{hashtag}_data.csv'
     path_to_others = f'{hashtag}_related_tags.csv'
     # if needed to be saved to a certain directory uncomment the following
-    path_to_hashtag = os.path.join(path,path_to_data) 
-    path_to_related = os.path.join(path,path_to_others) 
+    #path = r""
+    #path_to_data = os.path.join(path,path_to_data) 
+    #path_to_others = os.path.join(path,path_to_others) 
 
     # save data
-    tags_data.to_csv(path_to_hashtag, sep=',', header=True, encoding='utf-8', index= False)
+    tags_data.to_csv(path_to_data, sep=',', header=True, encoding='utf-8', index= False)
     # save the other_hashtags data
-    other_tags_df.to_csv(path_to_related, sep=',', header=True, encoding='utf-8',index =False)
+    other_tags_df.to_csv(path_to_others, sep=',', header=True, encoding='utf-8',index =False)
 
     return tags_data , other_tags_df
 
