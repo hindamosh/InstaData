@@ -4,6 +4,7 @@ import datetime
 import pandas as pd
 from time import sleep
 import os
+from collections import Counter
 
 def hashtag_data(hashtag):
     """
