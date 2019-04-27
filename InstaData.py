@@ -26,12 +26,15 @@ def hashtag_data(hashtag):
 
     """
     # get the json link for the needed hashtag
+    # get the variables from node .e inputed by the user
+    hashtag = sys.argv[1]
+    path = sys.argv[2] 
     url = 'https://www.instagram.com/explore/tags/'+ hashtag + '/?__a=1'
     response = requests.get(url)
     response_text = response.text
     data = json.loads(response_text)
 
-    #loop theough the old posts
+    #loop through the old posts
     all_data = []
     all_data.append(data)
     
@@ -72,7 +75,7 @@ def hashtag_data(hashtag):
                 # other hashtags/key words appear on the post
                 try:
                     text = post['edge_media_to_caption']['edges'][0]['node']['text']
-                    x_tag = [i for i in text.split(' ') if '#' in i] 
+                    x_tag = [i for i in text.split() if i.startswith('#')] 
                 except Exception:
                     continue
                 # link to the post
@@ -85,8 +88,17 @@ def hashtag_data(hashtag):
                 post_date = datetime.datetime.fromtimestamp(post['taken_at_timestamp']).strftime("%Y-%m-%d")
                 # vedio
                 is_vedio = post['is_video']
-                # gather data
-                x_tags.append(x_tag)
+                # gather other-tags data
+                index = 0
+                while index < len(x_tag):
+                    x_tag[index] = x_tag[index].strip('#')
+                    index += 1
+                    x_tag_str = ','.join(x_tag)
+                x_tags.append(x_tag_str)
+                #if len(x_tag) > 0:
+                #    x_tags.append(x_tag[0].split('\n')[-1])
+                #else:
+                #    x_tags.append('')
                 links.append(post_link)
                 num_comments.append(num_comment)
                 num_likes.append(num_like)
@@ -97,18 +109,37 @@ def hashtag_data(hashtag):
     tags_data = pd.DataFrame({'hashtag':hashtag,'other_tags':x_tags,'num_comments':num_comments, 
                           'num_likes':num_likes,'date':post_dates,'is_vedios':is_vedios,
                           'is_top_post':is_tops,'link':links})
+    # replace the empty string eith none values
+    tags_data.other_tags = tags_data.other_tags.apply(lambda x : None if x == '' else x)
+    tags_data.other_tags = tags_data.other_tags.apply(lambda x : x.replace('#',','))
+    # clean other_tags and create a nother dataFrame for other_tags
+    tag_counter = Counter()
+    for i in tags_data.other_tags:
+        for tag in  i.split(','):
+            tag_counter[tag] += 1
+
+    other_tags_df = pd.DataFrame({'tag':list(tag_counter.keys()),'tag_count':list(tag_counter.values())})
+    # replace empty string with null
+    other_tags_df.tag = other_tags_df.tag.apply(lambda x : None if x == '' else x)
+    # rearrange data by tag_count
+    other_tags_df.sort_values(by='tag_count', ascending=False,inplace=True)
+
     #save to csv file to the working directory
-    path_to_file = f'{hashtag}_data.csv'
+    path_to_data = f'{hashtag}_data.csv'
+    path_to_others = f'{hashtag}_related_tags.csv'
     # if needed to be saved to a certain directory uncomment the following
-    #path = r'' # insert the required path 
-    #path_to_file = os.path.join(path,path_to_file) 
-    
-    tags_data.to_csv(path_to_file, sep=',', header=True, encoding='utf-8')
-    
-    return tags_data
+    path_to_hashtag = os.path.join(path,path_to_data) 
+    path_to_related = os.path.join(path,path_to_others) 
+
+    # save data
+    tags_data.to_csv(path_to_hashtag, sep=',', header=True, encoding='utf-8', index= False)
+    # save the other_hashtags data
+    other_tags_df.to_csv(path_to_related, sep=',', header=True, encoding='utf-8',index =False)
+
+    return tags_data , other_tags_df
 
 if __name__ == "__main__":
     hashtag = str(input('Insert the needed hashatag...:'))
     print('Collecting data....')
-    data = hashtag_data(hashtag)
+    data, other_tags = hashtag_data(hashtag)
     print('Done...')
