@@ -1,5 +1,8 @@
 import pandas as pd
 import requests
+import MySQLdb
+import csv
+import time
 from time import sleep
 
 def data_posts_count(searched_tag):
@@ -60,7 +63,7 @@ def insta_scraper(searched_tag):
     url = 'https://www.instagram.com/explore/tags/'+ searched_tag + '/?__a=1'
     # get the previous data and total posts count
     data , total_posts_count = data_posts_count(searched_tag)
-    print(f'There is {total_posts_count:,} posts for #{searched_tag}')
+    print("There is %d posts for #%s" % (total_posts_count, searched_tag))
     # set up the dataframe
     data_df = get_temp_df(data)
     # has next page (True or False)
@@ -102,13 +105,102 @@ def insta_scraper(searched_tag):
     data_df['other_tags'] = data_df.text.apply(lambda x: extract_tags(x))
     
     #save to csv file to the working directory
-    path_to_data = f'{searched_tag}_data.csv'
+    path_to_data = searched_tag + '_data.csv'  
     # save data
     data_df.to_csv(path_to_data, encoding='utf-8-sig', index= False)
     return data_df
+
+def save_csvdata_mysql(tag):
+
+    print ("Connecting to MySQL")
+
+    mydb = MySQLdb.connect(   
+            host='host',
+            user='user',
+            passwd='password',
+            db='database')
+
+    cursor = mydb.cursor()    
+
+    csv_data = csv.reader(open(tag + '_data.csv', encoding='utf-8-sig'))
+
+    #create testcsv table
+    cursor.execute("""CREATE TABLE IF NOT EXISTS testcsv(
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    hashtag TEXT,
+    user_id TEXT,
+    url VARCHAR(255) UNIQUE,
+    date DATETIME,
+    text LONGTEXT,
+    num_comments INT,
+    num_likes INT,
+    is_video BOOLEAN,
+    video_view_count FLOAT,
+    is_top BOOLEAN,
+    other_tags LONGTEXT)""")
+    mydb.commit()
+
+    #Converts the table to accept emojis
+    cursor.execute("""ALTER TABLE
+    testcsv
+    CONVERT TO CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci""")
+    mydb.commit()
+
+    mydb.set_character_set('utf8mb4')
+
+    #Ignores the first row (columm name)
+    next(csv_data)
+
+    try:
+        print ("Inserting data")
+        for row in csv_data:
+            
+            user_id = row[0]
+            url = row[1]
+            date = time.strptime(row[2], '%Y-%m-%d %H:%M:%S')
+            formated_date = time.strftime('%Y-%m-%d %H:%M:%S',date)
+            text = row[3]
+            num_comments = int(row[4])
+            num_likes = int(row[5])
+            is_video = str_to_bool(row[6])
+
+            if is_video:
+                video_view_count = float(row[7])
+            else:
+                video_view_count = 0
+
+            is_top = str_to_bool(row[8])
+            other_tags = row[9]
+
+            mySql_insert_query = """INSERT IGNORE INTO testcsv (user_id, url, date, text, num_comments, num_likes, is_video, video_view_count, is_top, other_tags, hashtag) 
+                                    VALUES("%s", "%s", %s, "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s" ) """
+
+            recordTuple = (user_id, url, formated_date, text, num_comments, num_likes, is_video, video_view_count, is_top, other_tags, tag)
+            cursor.execute(mySql_insert_query, recordTuple)
+            mydb.commit()
+
+        #close the connection to the database.
+        cursor.close()
+        print ("Data inserted successfully")
+        
+    except Exception as ex:
+        print(str(ex))
+
+
+def str_to_bool(s):
+    if s == 'True':
+         return True
+    elif s == 'False':
+         return False
+    else:
+         raise ValueError
+
 
 if __name__ == "__main__":
     tag = str(input('Enter the hashtag:'))
     print('Collecting data....')
     data = insta_scraper(tag)
     print('Data collection has been completed.')
+    save_csvdata_mysql(tag)
+    
