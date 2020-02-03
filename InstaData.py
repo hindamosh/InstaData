@@ -2,6 +2,7 @@ import pandas as pd
 import requests
 import MySQLdb
 import csv
+import time
 from time import sleep
 
 def data_posts_count(searched_tag):
@@ -126,15 +127,16 @@ def save_csvdata_mysql(tag):
     #create testcsv table
     cursor.execute("""CREATE TABLE IF NOT EXISTS testcsv(
     id INT PRIMARY KEY AUTO_INCREMENT,
+    hashtag TEXT,
     user_id TEXT,
     url TEXT,
-    date TEXT,
+    date DATETIME,
     text LONGTEXT,
-    num_comments TEXT,
-    num_likes VARCHAR(255),
-    is_video VARCHAR(255),
-    video_view_count VARCHAR(255),
-    is_top VARCHAR(255),
+    num_comments INT,
+    num_likes INT,
+    is_video BOOLEAN,
+    video_view_count FLOAT,
+    is_top BOOLEAN,
     other_tags LONGTEXT)""")
     mydb.commit()
 
@@ -153,14 +155,43 @@ def save_csvdata_mysql(tag):
     print ("Inserting data")
     for row in csv_data:
         
-        cursor.execute('INSERT INTO testcsv (user_id, url, date, text, num_comments, num_likes, is_video, video_view_count, is_top, other_tags)' \
-            'VALUES("%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s" )', 
-            row)
+        user_id = row[0]
+        url = row[1]
+        date = time.strptime(row[2], '%Y-%m-%d %H:%M:%S')
+        formated_date = time.strftime('%Y-%m-%d %H:%M:%S',date)
+        text = row[3]
+        num_comments = int(row[4])
+        num_likes = int(row[5])
+        is_video = str_to_bool(row[6])
+
+        if is_video:
+            video_view_count = float(row[7])
+        else:
+            video_view_count = 0
+
+        is_top = str_to_bool(row[8])
+        other_tags = row[9]
+
+        mySql_insert_query = """INSERT INTO testcsv (user_id, url, date, text, num_comments, num_likes, is_video, video_view_count, is_top, other_tags, hashtag) 
+                                VALUES("%s", "%s", %s, "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s" ) """
+
+        recordTuple = (user_id, url, formated_date, text, num_comments, num_likes, is_video, video_view_count, is_top, other_tags, tag)
+        cursor.execute(mySql_insert_query, recordTuple)
+        mydb.commit()
+
 
     #close the connection to the database.
-    mydb.commit()
     cursor.close()
     print ("Data inserted successfully")
+
+
+def str_to_bool(s):
+    if s == 'True':
+         return True
+    elif s == 'False':
+         return False
+    else:
+         raise ValueError
 
 
 if __name__ == "__main__":
