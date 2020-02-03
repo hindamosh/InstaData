@@ -129,7 +129,7 @@ def save_csvdata_mysql(tag):
     id INT PRIMARY KEY AUTO_INCREMENT,
     hashtag TEXT,
     user_id TEXT,
-    url TEXT,
+    url VARCHAR(255) UNIQUE,
     date DATETIME,
     text LONGTEXT,
     num_comments INT,
@@ -152,37 +152,40 @@ def save_csvdata_mysql(tag):
     #Ignores the first row (columm name)
     next(csv_data)
 
-    print ("Inserting data")
-    for row in csv_data:
+    try:
+        print ("Inserting data")
+        for row in csv_data:
+            
+            user_id = row[0]
+            url = row[1]
+            date = time.strptime(row[2], '%Y-%m-%d %H:%M:%S')
+            formated_date = time.strftime('%Y-%m-%d %H:%M:%S',date)
+            text = row[3]
+            num_comments = int(row[4])
+            num_likes = int(row[5])
+            is_video = str_to_bool(row[6])
+
+            if is_video:
+                video_view_count = float(row[7])
+            else:
+                video_view_count = 0
+
+            is_top = str_to_bool(row[8])
+            other_tags = row[9]
+
+            mySql_insert_query = """INSERT IGNORE INTO testcsv (user_id, url, date, text, num_comments, num_likes, is_video, video_view_count, is_top, other_tags, hashtag) 
+                                    VALUES("%s", "%s", %s, "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s" ) """
+
+            recordTuple = (user_id, url, formated_date, text, num_comments, num_likes, is_video, video_view_count, is_top, other_tags, tag)
+            cursor.execute(mySql_insert_query, recordTuple)
+            mydb.commit()
+
+        #close the connection to the database.
+        cursor.close()
+        print ("Data inserted successfully")
         
-        user_id = row[0]
-        url = row[1]
-        date = time.strptime(row[2], '%Y-%m-%d %H:%M:%S')
-        formated_date = time.strftime('%Y-%m-%d %H:%M:%S',date)
-        text = row[3]
-        num_comments = int(row[4])
-        num_likes = int(row[5])
-        is_video = str_to_bool(row[6])
-
-        if is_video:
-            video_view_count = float(row[7])
-        else:
-            video_view_count = 0
-
-        is_top = str_to_bool(row[8])
-        other_tags = row[9]
-
-        mySql_insert_query = """INSERT INTO testcsv (user_id, url, date, text, num_comments, num_likes, is_video, video_view_count, is_top, other_tags, hashtag) 
-                                VALUES("%s", "%s", %s, "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s" ) """
-
-        recordTuple = (user_id, url, formated_date, text, num_comments, num_likes, is_video, video_view_count, is_top, other_tags, tag)
-        cursor.execute(mySql_insert_query, recordTuple)
-        mydb.commit()
-
-
-    #close the connection to the database.
-    cursor.close()
-    print ("Data inserted successfully")
+    except Exception as ex:
+        print(str(ex))
 
 
 def str_to_bool(s):
