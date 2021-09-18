@@ -5,7 +5,7 @@ from time import sleep
 def data_posts_count(searched_tag):
     'to get primary dataframe for the seareched tag and its total posts count'
     url = 'https://www.instagram.com/explore/tags/'+ searched_tag + '/?__a=1'
-    response = requests.get(url)
+    response = requests.get(url, headers = {'User-agent': 'your bot 0.1'})
     data = response.json()
     total_posts_count = data['graphql']['hashtag']['edge_hashtag_to_media']['count']
     return data , total_posts_count
@@ -77,7 +77,7 @@ def insta_scraper(searched_tag):
             new_url = url + '&max_id=' + next_page
             # parse the interested url
             sleep(2)
-            response = requests.get(new_url)
+            response = requests.get(new_url, headers = {'User-agent': 'your bot 0.1'})
             # data from json file
             data = response.json()            
             has_next_page = data['graphql']['hashtag']['edge_hashtag_to_media']['page_info']['has_next_page']
